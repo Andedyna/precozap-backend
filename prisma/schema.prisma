@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id           String   @id @default(uuid())
+  name         String
+  category     String
+  description  String?
+  image        String?
+
+  rating       Float    @default(0)
+  reviews      Int      @default(0)
+  bestPrice    Float    @default(0)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // 🔥 RELAÇÕES
+  prices       MarketplacePrice[]
+  priceHistory PriceHistory[]
+
+  // 🔥 INDEXES (performance real)
+  @@index([category])
+  @@index([bestPrice])
+  @@index([createdAt])
+}
+
+model MarketplacePrice {
+  id            String   @id @default(uuid())
+  productId     String
+  marketplace   String
+  price         Float
+
+  // 🔥 CAMPOS AVANÇADOS (nível produto real)
+  originalPrice Float?     // preço antes do desconto
+  discount      Float?     // % desconto
+  shipping      String?    // "Grátis", "R$ 20"
+  inStock       Boolean    @default(true)
+  installments  String?    // "10x sem juros"
+  url           String?    // 🔥 link real da loja
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // 🔥 RELAÇÃO
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // 🔥 INDEXES (busca rápida)
+  @@index([productId])
+  @@index([marketplace])
+  @@index([price])
+
+  // 🔥 OPCIONAL (evita duplicar mesma loja com mesmo preço no mesmo momento)
+  @@index([productId, marketplace, price])
+}
+
+model PriceHistory {
+  id          String   @id @default(uuid())
+  productId   String
+  price       Float
+  date        DateTime @default(now())
+
+  // 🔥 origem do preço (importante pra IA futura)
+  marketplace String
+
+  createdAt   DateTime @default(now())
+
+  // 🔥 RELAÇÃO
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // 🔥 INDEXES
+  @@index([productId])
+  @@index([date])
+  @@index([marketplace])
+}
